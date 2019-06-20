@@ -219,6 +219,8 @@ public class PumpHistoryParser {
                                     closedLoopDailyTotals();
                                     break;
 
+                                // currently 670G temp targets are not implemented
+                                /*
                                 case CLOSED_LOOP_ALARM_AUTO_CLEARED:
                                     debugParser();
                                     break;
@@ -228,6 +230,7 @@ public class PumpHistoryParser {
                                 case CLOSED_LOOP_TEMP_TARGET_ENDED:
                                     debugParser();
                                     break;
+                                */
                             }
 
                         }
@@ -1575,7 +1578,7 @@ public class PumpHistoryParser {
                     || eventType == EventType.REWIND
                     || eventType == EventType.START_OF_DAY_MARKER
                     || eventType == EventType.END_OF_DAY_MARKER
-                    ) {
+            ) {
                 result += " (no data)";
 
             }
@@ -1587,7 +1590,7 @@ public class PumpHistoryParser {
                     //&& eventType != EventType.ALARM_CLEARED
                     && eventType != EventType.CLOSED_LOOP_STATUS_DATA
                     && eventType != EventType.CLOSED_LOOP_PERIODIC_DATA
-                    )
+            )
                 Log.d(TAG, result);
 
             index += eventSize;

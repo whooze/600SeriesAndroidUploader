@@ -86,21 +86,6 @@ public class PumpHistoryBG extends RealmObject implements PumpHistoryInterface {
             return nightscoutItems;
         }
 
-        // debug for 670 to check if cal is sent without a bg
-        if (calibration && bgRTC == 0 && bgOffset == 0) {
-            TreatmentsEndpoints.Treatment treatment = HistoryUtils.nightscoutTreatment(nightscoutItems, this, senderID, calibrationDate);
-            treatment.setEventType("Note");
-            treatment.setNotes(String.format("%s<br><br> %s: %s %s: %s",
-                    "DEBUG: CAL Event noted due to no BG event in history. BG event may have occurred past this date.",
-                    FormatKit.getInstance().getString(R.string.text__Factor),
-                    calibrationFactor,
-                    FormatKit.getInstance().getString(R.string.text__Target),
-                    FormatKit.getInstance().formatAsGlucose(calibrationTarget, true)
-            ));
-            nightscoutItems.get(0).update();
-            return nightscoutItems;
-        }
-
         TreatmentsEndpoints.Treatment treatment = HistoryUtils.nightscoutTreatment(nightscoutItems, this, senderID, bgDate);
         treatment.setEventType("BG Check");
         treatment.setGlucoseType("Finger");
@@ -184,7 +169,7 @@ public class PumpHistoryBG extends RealmObject implements PumpHistoryInterface {
         messageItems.add(new MessageItem()
                 .type(type)
                 .date(date)
-                .clock(FormatKit.getInstance().formatAsClock(date.getTime()).replace(" ", ""))
+                .clock(FormatKit.getInstance().formatAsClock(date.getTime()))
                 .title(title)
                 .message(message));
 
@@ -210,21 +195,21 @@ public class PumpHistoryBG extends RealmObject implements PumpHistoryInterface {
                 || PumpHistoryParser.BG_CONTEXT.ENTERED_IN_BOLUS_WIZRD.equals(bgContext)
                 || PumpHistoryParser.BG_CONTEXT.ENTERED_IN_SENSOR_CALIB.equals(bgContext)
                 || PumpHistoryParser.BG_CONTEXT.ENTERED_AS_BG_MARKER.equals(bgContext)
-                )
+        )
         {
             entered = true;
             record = realm.where(PumpHistoryBG.class)
                     .equalTo("pumpMAC", pumpMAC)
                     .equalTo("bg", bg)
                     .greaterThanOrEqualTo("bgRTC", eventRTC)
-                    .lessThanOrEqualTo("bgRTC", eventRTC + 15 * 60)
+                    .lessThanOrEqualTo("bgRTC", HistoryUtils.offsetRTC(eventRTC, 15 * 60))
                     .sort("eventDate", Sort.ASCENDING)
                     .findFirst();
         } else {
             record = realm.where(PumpHistoryBG.class)
                     .equalTo("pumpMAC", pumpMAC)
                     .equalTo("bg", bg)
-                    .greaterThan("bgRTC", eventRTC - 15 * 60)
+                    .greaterThan("bgRTC", HistoryUtils.offsetRTC(eventRTC,- 15 * 60))
                     .lessThanOrEqualTo("bgRTC", eventRTC)
                     .sort("eventDate", Sort.DESCENDING)
                     .findFirst();
@@ -237,7 +222,7 @@ public class PumpHistoryBG extends RealmObject implements PumpHistoryInterface {
                     .equalTo("calibration", true)
                     .equalTo("calibrationFlag", false)
                     .greaterThanOrEqualTo("calibrationRTC", eventRTC)
-                    .lessThan("calibrationRTC", eventRTC + 20 * 60)
+                    .lessThan("calibrationRTC", HistoryUtils.offsetRTC(eventRTC, 20 * 60))
                     .sort("eventDate", Sort.ASCENDING)
                     .findFirst();
             if (record == null) {
@@ -292,7 +277,7 @@ public class PumpHistoryBG extends RealmObject implements PumpHistoryInterface {
             // look for a bg
             record = realm.where(PumpHistoryBG.class)
                     .equalTo("pumpMAC", pumpMAC)
-                    .greaterThan("bgRTC", eventRTC - 20 * 60)
+                    .greaterThan("bgRTC", HistoryUtils.offsetRTC(eventRTC, - 20 * 60))
                     .lessThanOrEqualTo("bgRTC", eventRTC)
                     .equalTo("calibrationFlag", true)
                     .equalTo("calibration", false)

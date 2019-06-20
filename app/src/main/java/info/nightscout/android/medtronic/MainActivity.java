@@ -46,7 +46,6 @@ import android.widget.Toast;
 import com.github.javiersantos.appupdater.AppUpdater;
 import com.github.javiersantos.appupdater.enums.UpdateFrom;
 import com.jjoe64.graphview.DefaultLabelFormatter;
-import com.jjoe64.graphview.Viewport;
 import com.jjoe64.graphview.series.DataPointInterface;
 import com.jjoe64.graphview.series.OnDataPointTapListener;
 import com.jjoe64.graphview.series.PointsGraphSeries;
@@ -110,6 +109,7 @@ public class MainActivity extends AppCompatActivity implements OnSharedPreferenc
 
     private Toast toast;
 
+    private Handler mUiRealmHandler = new Handler();
     private Handler mUiRefreshHandler = new Handler();
     private Runnable mUiRefreshRunnable = new RefreshDisplayRunnable();
 
@@ -180,10 +180,13 @@ public class MainActivity extends AppCompatActivity implements OnSharedPreferenc
 
             // v0.7.0 changed minimum backfill period to 7 days
             if (mPrefs.getString(getString(R.string.key_sysCgmHistoryDays), "").equals("1"))
-                mPrefs.edit().putString(getString(R.string.key_sysCgmHistoryDays), "7").apply();
+                mPrefs.edit().putString(getString(R.string.key_sysCgmHistoryDays), getString(R.string.default_sysCgmHistoryDays)).apply();
             if (mPrefs.getString(getString(R.string.key_sysPumpHistoryDays), "").equals("1"))
-                mPrefs.edit().putString(getString(R.string.key_sysPumpHistoryDays), "7").apply();
-            }
+                mPrefs.edit().putString(getString(R.string.key_sysPumpHistoryDays), getString(R.string.default_sysPumpHistoryDays)).apply();
+            // v0.7.0 removed "Events Only" option, changed default from "90" to "60"
+            if (mPrefs.getString(getString(R.string.key_sysPumpHistoryFrequency), "").equals("0"))
+                mPrefs.edit().putString(getString(R.string.key_sysPumpHistoryFrequency), getString(R.string.default_sysPumpHistoryFrequency)).apply();
+        }
 
         storeRealm.executeTransaction(new Realm.Transaction() {
             @Override
@@ -459,7 +462,7 @@ public class MainActivity extends AppCompatActivity implements OnSharedPreferenc
     private Toast serveToast(SpannableStringBuilder ssb, Toast toast, View v) {
         if (toast != null) toast.cancel();
 
-        toast = Toast.makeText(mContext, ssb, Toast.LENGTH_SHORT);
+        toast = Toast.makeText(mContext, ssb, Toast.LENGTH_LONG);
 
         View parent = (View) v.getParent();
         int parentHeight = parent.getHeight();
@@ -668,10 +671,10 @@ public class MainActivity extends AppCompatActivity implements OnSharedPreferenc
     }
 
     synchronized private void openRealmDatastore() {
-        if (storeRealm == null) {
+        if (storeRealm == null)
             storeRealm = Realm.getInstance(UploaderApplication.getStoreConfiguration());
+        if (dataStore == null)
             dataStore = storeRealm.where(DataStore.class).findFirst();
-        }
     }
 
     synchronized private void closeRealm() {
@@ -740,12 +743,6 @@ public class MainActivity extends AppCompatActivity implements OnSharedPreferenc
                                 R.plurals.minutes,
                                 historyFrequency
                         ));
-            } else {
-                UserLogMessage.getInstance().add(UserLogMessage.TYPE.OPTION,
-                        String.format("{id;%s}: {id;%s}",
-                                R.string.ul_main__auto_mode_update,
-                                R.string.ul_main__events_only
-                        ));
             }
 
             deviceMessage();
@@ -782,6 +779,7 @@ public class MainActivity extends AppCompatActivity implements OnSharedPreferenc
         if (mEnableCgmService) {
             if (!mPrefs.getBoolean("EnableCgmService", false)) {
                 mPrefs.edit().putBoolean("EnableCgmService", true).commit();
+                openRealmDatastore();
                 storeRealm.executeTransaction(new Realm.Transaction() {
                     @Override
                     public void execute(@NonNull Realm realm) {
@@ -825,7 +823,7 @@ public class MainActivity extends AppCompatActivity implements OnSharedPreferenc
             setScreenSleepMode();
         }
 
-        else if (key != "EnableCgmService") {
+        else if (!key.equals("EnableCgmService")) {
             updatePrefs();
             if (mEnableCgmService) {
                 if (key.contains("urchin") && mEnableCgmService) {
@@ -1000,32 +998,39 @@ public class MainActivity extends AppCompatActivity implements OnSharedPreferenc
         if (displayCgmResults.size() > 0) {
             timeLastSGV = displayCgmResults.last().getEventDate().getTime();
             sgvString = FormatKit.getInstance().formatAsGlucose(displayCgmResults.last().getSgv(), false, true);
-
             String trend = displayCgmResults.last().getCgmTrend();
-            if (trend != null) {
-                switch (trend) {
-                    case "DOUBLE_UP":
+            if (displayCgmResults.last().isEstimate()) {
+                trendString = "{ion-ios-medical}";
+            } else if (trend != null) {
+                switch (PumpHistoryCGM.NS_TREND.valueOf(trend)) {
+                    case TRIPLE_UP:
+                        trendString = "{ion_ios_arrow_thin_up}{ion_ios_arrow_thin_up}{ion_ios_arrow_thin_up}";
+                        break;
+                    case DOUBLE_UP:
                         trendString = "{ion_ios_arrow_thin_up}{ion_ios_arrow_thin_up}";
                         break;
-                    case "SINGLE_UP":
+                    case SINGLE_UP:
                         trendString = "{ion_ios_arrow_thin_up}";
                         break;
-                    case "FOURTY_FIVE_UP":
+                    case FOURTY_FIVE_UP:
                         trendRotation = -45;
                         trendString = "{ion_ios_arrow_thin_right}";
                         break;
-                    case "FLAT":
+                    case FLAT:
                         trendString = "{ion_ios_arrow_thin_right}";
                         break;
-                    case "FOURTY_FIVE_DOWN":
+                    case FOURTY_FIVE_DOWN:
                         trendRotation = 45;
                         trendString = "{ion_ios_arrow_thin_right}";
                         break;
-                    case "SINGLE_DOWN":
+                    case SINGLE_DOWN:
                         trendString = "{ion_ios_arrow_thin_down}";
                         break;
-                    case "DOUBLE_DOWN":
+                    case DOUBLE_DOWN:
                         trendString = "{ion_ios_arrow_thin_down}{ion_ios_arrow_thin_down}";
+                        break;
+                    case TRIPLE_DOWN:
+                        trendString = "{ion_ios_arrow_thin_down}{ion_ios_arrow_thin_down}{ion_ios_arrow_thin_down}";
                         break;
                     default:
                         trendString = "{ion_ios_minus_empty}";
@@ -1096,12 +1101,24 @@ public class MainActivity extends AppCompatActivity implements OnSharedPreferenc
 
     private void refreshDisplayChart() {
         Log.d(TAG, "refreshDisplayChart");
-        stopDisplayChart();
-        startDisplayChart();
+        if (historyRealm.isInTransaction()) {
+            mUiRealmHandler.post(
+                    new Runnable() {
+                        @Override
+                        public void run() {
+                            stopDisplayChart();
+                            startDisplayChart();
+                        }
+                    });
+        } else {
+            stopDisplayChart();
+            startDisplayChart();
+        }
     }
 
     private void stopDisplayChart() {
         Log.d(TAG, "stopDisplayChart");
+        mUiRealmHandler.removeCallbacks(mUiRefreshRunnable);
         if (displayChartResults != null) {
             displayChartResults.removeAllChangeListeners();
             displayChartResults = null;

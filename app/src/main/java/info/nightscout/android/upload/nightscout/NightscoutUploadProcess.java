@@ -42,8 +42,8 @@ Profile - no QUERY support, GET returns all profile sets, can POST & DELETE a si
 
 */
 
-public class NightscoutUpload {
-    private static final String TAG = NightscoutUpload.class.getSimpleName();
+public class NightscoutUploadProcess {
+    private static final String TAG = NightscoutUploadProcess.class.getSimpleName();
 
     // delete all items or just the items without a Key600 field
     // debug use only as may have issues if there is a lot of treatment entries in NS
@@ -67,7 +67,7 @@ public class NightscoutUpload {
 
     private UploadApi uploadApi;
 
-    NightscoutUpload(String url, String secret) throws Exception {
+    NightscoutUploadProcess(String url, String secret) throws Exception {
         uploadApi = new UploadApi(url, secret);
         deviceEndpoints = uploadApi.getDeviceEndpoints();
         entriesEndpoints = uploadApi.getEntriesEndpoints();
@@ -103,7 +103,7 @@ public class NightscoutUpload {
         if (dataStore.getNsDeviceName().length() == 0) this.device = device;
         else this.device = DEVICE_HEADER + dataStore.getNsDeviceName();
 
-        if (dataStore.getNsEnteredBy().length() == 0) this.enteredBy = "";
+        if (dataStore.getNsEnteredBy().length() == 0) this.enteredBy = this.device;
         else enteredBy = DEVICE_HEADER + dataStore.getNsEnteredBy();
 
         if (dataStore.isNsEnableDeviceStatus())
@@ -166,7 +166,7 @@ public class NightscoutUpload {
 
     private void processEntry(NightscoutItem.MODE mode, EntriesEndpoints.Entry entry, List<EntriesEndpoints.Entry> entries) throws Exception {
 
-        String from = Long.toString(new SimpleDateFormat("yyyy").parse("2017").getTime());
+        String from = Long.toString(new SimpleDateFormat("yyyy", Locale.ENGLISH).parse("2017").getTime());
 
         String key = entry.getKey600();
         String mac = entry.getPumpMAC600();
@@ -188,8 +188,8 @@ public class NightscoutUpload {
                                     mode == NightscoutItem.MODE.UPDATE || mode == NightscoutItem.MODE.DELETE)) {
                         Response<ResponseBody> responseBody = entriesEndpoints.deleteID(item.getDate().toString(), item.get_id()).execute();
                         if (responseBody.isSuccessful()) {
-                            Log.d(TAG, String.format("deleted entry ID: %s with KEY: %s MAC: %s DATE: %s",
-                                    item.get_id(), item.getKey600(), item.getPumpMAC600(), item.getDate()));
+                            Log.d(TAG, String.format("deleted entry ID: %s with KEY: %s MAC: %s DATE: %s (%s)",
+                                    item.get_id(), item.getKey600(), item.getPumpMAC600(), item.getDateString(), item.getDate()));
                         } else {
                             Log.d(TAG, "no DELETE response from nightscout site");
                             throw new Exception("(processEntry) " + responseBody.message());
@@ -204,7 +204,7 @@ public class NightscoutUpload {
             }
 
             if (mode == NightscoutItem.MODE.UPDATE || mode == NightscoutItem.MODE.CHECK) {
-                Log.d(TAG, String.format("queued item for nightscout entries bulk upload. KEY: %s MAC: %s DATE: %s", key, mac, entry.getDateString()));
+                Log.d(TAG, String.format("queued item for nightscout entries bulk upload. KEY: %s MAC: %s DATE: %s (%s)", key, mac, entry.getDateString(), entry.getDate()));
                 entry.setDevice(device);
                 entries.add(entry);
             }
@@ -405,7 +405,7 @@ public class NightscoutUpload {
         if (!record.isCgmLostSensor()
                 && extraInfo != null
                 && record.getEventDate().getTime() >= extraInfo.getEventDate().getTime()) {
-            info = shorten ? extraInfo.getInfo_short() : extraInfo.getInfo();
+            info = shorten ? extraInfo.getInfoShort() : extraInfo.getInfo();
             shorten = true;
         }
 

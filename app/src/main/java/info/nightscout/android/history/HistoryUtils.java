@@ -151,11 +151,19 @@ public class HistoryUtils {
             Log.w(TAG, "found " + results.size() + " events with the same date");
             int n = 0;
             while (n < results.size() &&
-                !((PumpHistoryInterface) results.get(n)).getKey().equals(key)) {n++;}
+                    !((PumpHistoryInterface) results.get(n)).getKey().equals(key)) {n++;}
             if (n > 0) {
                 Log.w(TAG, String.format("adjusted eventDate for nightscout +%s seconds", n * 2));
                 treatment.setCreated_at(new Date(timestamp + n * 2000));
             }
         }
+    }
+
+    // keep pump RTC value within bounds 0x80000000 to 0xFFFFFFFF
+    public static int offsetRTC(int rtc, int offset) {
+        long i = (long) rtc + (long) offset;
+        if (i > 0) i = -1;
+        if (i < -0x7FFFFFFFL) i = -0x7FFFFFFFL;
+        return (int) i;
     }
 }

@@ -190,7 +190,7 @@ public class PumpHistoryAlarm extends RealmObject implements PumpHistoryInterfac
                 .type(type)
                 .date(alarmedDate)
                 .priority(MessageItem.PRIORITY.convert(pumpAlert.getPriority()))
-                .clock(FormatKit.getInstance().formatAsClock(alarmedDate.getTime()).replace(" ", ""))
+                .clock(FormatKit.getInstance().formatAsClock(alarmedDate.getTime()))
                 .title(pumpAlert.getTitleAlt())
                 .message(pumpAlert.getMessage())
                 .extended(String.format("%s%s%s",
@@ -261,7 +261,7 @@ public class PumpHistoryAlarm extends RealmObject implements PumpHistoryInterfac
                         .equalTo("cleared", true)
                         .equalTo("faultNumber", faultNumber)
                         .greaterThanOrEqualTo("clearedRTC", eventRTC)
-                        .lessThan("clearedRTC", eventRTC + 12 * 60 * 60)
+                        .lessThan("clearedRTC", HistoryUtils.offsetRTC(eventRTC, 12 * 60 * 60))
                         .sort("clearedDate", Sort.ASCENDING)
                         .findAll();
                 if (results.size() == 0) {
@@ -339,7 +339,7 @@ public class PumpHistoryAlarm extends RealmObject implements PumpHistoryInterfac
                     .equalTo("silenced", false)
                     .equalTo("faultNumber", faultNumber)
                     .lessThanOrEqualTo("alarmedRTC", eventRTC)
-                    .greaterThan("alarmedRTC", eventRTC - 12 * 60 * 60)
+                    .greaterThan("alarmedRTC", HistoryUtils.offsetRTC(eventRTC, -12 * 60 * 60))
                     .sort("alarmedDate", Sort.DESCENDING)
                     .findAll();
 

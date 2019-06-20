@@ -83,7 +83,6 @@
     </string-array>
 
     <string-array name="automode_frequency">
-        <item>@string/Events_Only</item>
         <item>{minutes;15}</item>
         <item>{minutes;30}</item>
         <item>{minutes;45}</item>
@@ -95,7 +94,6 @@
     </string-array>
 
     <string-array name="automode_frequency_values">
-        <item>0</item>
         <item>15</item>
         <item>30</item>
         <item>45</item>
@@ -137,7 +135,7 @@
     </string-array>
 
     <string-array name="profile_default">
-        <item>@string/Use_Active</item>
+        <item>@string/pref_ns_profile_default_pattern_use_active</item>
         <item>{pattern;1}</item>
         <item>{pattern;2}</item>
         <item>{pattern;3}</item>
@@ -251,7 +249,7 @@
     </string-array>
 
     <string-array name="alarm_ttl">
-        <item>@string/Keep_All</item>
+        <item>@string/pref_ns_pump_alerts_remove_from_nightscout_keep_all</item>
         <item>{hours;12}</item>
         <item>{hours;24}</item>
         <item>{days;2}</item>
@@ -582,6 +580,32 @@
     </string-array>
 
     <string-array name="pushover_sound">
+        <item>@string/pref_pushover_sound__none</item>
+        <item>@string/pref_pushover_sound__default</item>
+        <item>pushover</item>
+        <item>bike</item>
+        <item>bugle</item>
+        <item>cashregister</item>
+        <item>classical</item>
+        <item>cosmic</item>
+        <item>falling</item>
+        <item>gamelan</item>
+        <item>incoming</item>
+        <item>intermission</item>
+        <item>magic</item>
+        <item>mechanical</item>
+        <item>pianobar</item>
+        <item>siren</item>
+        <item>spacealarm</item>
+        <item>tugboat</item>
+        <item>alien</item>
+        <item>climb</item>
+        <item>persistent</item>
+        <item>echo</item>
+        <item>updown</item>
+    </string-array>
+
+    <string-array name="pushover_sound_values">
         <item>none</item>
         <item>default</item>
         <item>pushover</item>
@@ -698,7 +722,9 @@
         <item>480</item>
         <item>540</item>
         <item>600</item>
-        <item>1200</item>
+        <item>660</item>
+        <item>720</item>
+        <item>1440</item>
     </string-array>
 
     <string-array name="ReportISIGinclude">

@@ -31,8 +31,6 @@ public class FormatKit {
     private static FormatKit sInstance;
     private final Application mApplication;
 
-    private DecimalFormat df = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.getDefault()));
-
     private FormatKit(Application application) {
         Log.d(TAG, "initialise instance");
         mApplication = application;
@@ -53,12 +51,14 @@ public class FormatKit {
     }
 
     public String formatAsGrams(Double value) {
+        DecimalFormat df = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.getDefault()));
         df.setMinimumFractionDigits(0);
         df.setMaximumFractionDigits(1);
         return df.format(value) + mApplication.getApplicationContext().getString(R.string.gram_g);
     }
 
     public String formatAsExchanges(Double value) {
+        DecimalFormat df = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.getDefault()));
         df.setMinimumFractionDigits(0);
         df.setMaximumFractionDigits(1);
         return df.format(value) + mApplication.getApplicationContext().getString(R.string.gram_exchange_ex);
@@ -69,6 +69,7 @@ public class FormatKit {
     }
 
     public String formatAsInsulin(Double value, int precision) {
+        DecimalFormat df = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.getDefault()));
         df.setMinimumFractionDigits(0);
         df.setMaximumFractionDigits(precision);
         return df.format(value) + mApplication.getApplicationContext().getString(R.string.insulin_U);
@@ -102,12 +103,14 @@ public class FormatKit {
     }
 
     public String formatAsGlucoseMMOL(int value, boolean tag, int precision) {
+        DecimalFormat df = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.getDefault()));
         df.setMinimumFractionDigits(1);
         df.setMaximumFractionDigits(precision);
         return df.format(value / MMOLXLFACTOR) + (tag ? " " + mApplication.getApplicationContext().getString(R.string.glucose_mmol) : "");
     }
 
     public String formatAsDecimal(double value, int precision) {
+        DecimalFormat df = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.getDefault()));
         df.setMinimumFractionDigits(precision);
         df.setMaximumFractionDigits(precision);
         return df.format(value);
@@ -122,6 +125,7 @@ public class FormatKit {
     }
 
     public String formatAsDecimalDiff(double value, int precision) {
+        DecimalFormat df = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.getDefault()));
         df.setMinimumFractionDigits(precision);
         df.setMaximumFractionDigits(precision);
         return (value < 0 ? "-" : "+") + df.format(Math.abs(value));
@@ -187,8 +191,7 @@ public class FormatKit {
         if (DateFormat.is24HourFormat(mApplication.getApplicationContext()))
             return new SimpleDateFormat("HH:mm", Locale.getDefault()).format(time);
         else
-            return new SimpleDateFormat("h:mm a", Locale.getDefault()).format(time)
-                    .toLowerCase().replace(".", "").replace(",", "");
+            return new SimpleDateFormat("h:mm a", Locale.getDefault()).format(time);
     }
 
     public String formatAsClockNoAmPm(long time) {
@@ -202,8 +205,7 @@ public class FormatKit {
         if (DateFormat.is24HourFormat(mApplication.getApplicationContext()))
             return new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(time);
         else
-            return new SimpleDateFormat("h:mm:ss a", Locale.getDefault()).format(time)
-                    .toLowerCase().replace(".", "").replace(",", "");
+            return new SimpleDateFormat("h:mm:ss a", Locale.getDefault()).format(time);
     }
 
     public String formatAsClockSecondsNoAmPm(long time) {
@@ -226,9 +228,10 @@ public class FormatKit {
         if (DateFormat.is24HourFormat(mApplication.getApplicationContext())) {
             return df.format(hours) + ":" + df.format(minutes);
         } else {
-            return (hours > 12 ? hours - 12 : hours) + ":" + df.format(minutes)
-                    + DateFormatSymbols.getInstance().getAmPmStrings()[hours < 12 ? 0 : 1]
-                    .toLowerCase().replace(".", "").replace(",", "");
+            return (String.format("%s:%s %s",
+                    hours > 12 ? hours - 12 : hours,
+                    df.format(minutes),
+                    DateFormatSymbols.getInstance().getAmPmStrings()[hours < 12 ? 0 : 1]));
         }
     }
 
@@ -362,20 +365,43 @@ public class FormatKit {
     // The total size of an index entry, which can include structural overhead depending on the BSON type,
     // must be less than 1024 bytes.
     public String asMongoDBIndexKeySafe(String string) {
-        int size = string.length();
+        int length = string.length();
 
         // json will escape "</div>" to "<\/div"
 
-        int jsonsize = size + (size - string
-                .replace("/", "")
-                .replace("\"", "")
-                .replace("\\", "")
-                .length());
+        String json = string
+                .replace("\\", "\\\\")
+                .replace("/", "\\/")
+                .replace("\"", "\\\"");
 
-        Log.d(TAG, String.format("MongoDBIndexKeySafe: size: %d used: %d", size, jsonsize));
+        int jsonLength = json.length();
 
-        if (jsonsize < 1024) return string;
-        return "";
+        int utf8Length = utf8Length(json);
+
+        if (utf8Length < 1024) {
+            Log.d(TAG, String.format("MongoDBIndexKeySafe: length: %d json: %d utf-8: %s", length, jsonLength, utf8Length));
+            return string;
+        } else {
+            Log.e(TAG, String.format("MongoDBIndexKeySafe: length: %d json: %d utf-8: %s (max bytes >= 1024)", length, jsonLength, utf8Length));
+            return "";
+        }
     }
 
+    public static int utf8Length(CharSequence sequence) {
+        int count = 0;
+        for (int i = 0, len = sequence.length(); i < len; i++) {
+            char ch = sequence.charAt(i);
+            if (ch <= 0x7F) {
+                count++;
+            } else if (ch <= 0x7FF) {
+                count += 2;
+            } else if (Character.isHighSurrogate(ch)) {
+                count += 4;
+                ++i;
+            } else {
+                count += 3;
+            }
+        }
+        return count;
+    }
 }
